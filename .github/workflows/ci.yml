@@ -15,11 +15,16 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    # Keep the ubuntu check names identical to the pre-matrix names
+    # ("build-and-test (22)") so the required-status branch protection
+    # keeps matching; macOS legs get a distinct, non-required name.
+    name: build-and-test (${{ matrix.node-version }})${{ matrix.os == 'macos-latest' && ' macos' || '' }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         node-version: [22, 24, 26]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
