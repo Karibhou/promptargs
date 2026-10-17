@@ -42,14 +42,14 @@ npm versions are immutable. Never try to republish the same version.
 
 ## Failed publish (release exists, npm version missing)
 
-If no `Release` run exists (including the original `v0.7.0` release), or the dispatch failed after creating the release, check that the version is absent from npm, then dispatch the publish workflow after the workflow fix has merged:
+If no successful `Release` run exists for a tag, or the dispatch failed after creating the release, check that the version is absent from npm, then dispatch the publish workflow from `main`:
 
 ```bash
 npm view @hivecommons/promptargs versions --json
-GH_TOKEN="$GH_TOKEN" gh workflow run release.yml --repo hivecommons/promptargs --ref main -f tag=v0.7.0
+GH_TOKEN="$GH_TOKEN" gh workflow run release.yml --repo hivecommons/promptargs --ref main -f tag=v<version>
 ```
 
-Replace `v0.7.0` with the missing release tag. Run the workflow from `main` so it uses the updated workflow even for older tags; it checks out `refs/tags/<tag>` and validates that tag against the checked-out package version before publishing. Do not move or recreate the existing tag. The auto-release workflow skips existing releases, so it will not retry this publication automatically.
+Replace `v<version>` with the missing release tag. Run the workflow from `main` so it uses the updated workflow even for older tags; it checks out `refs/tags/<tag>` and validates that tag against the checked-out package version before publishing. Do not move or recreate the existing tag. The auto-release workflow skips existing releases, so it will not retry this publication automatically.
 
 1. Open the failed `Release` run and read the failing step (dist drift, tests, tag/version mismatch, npm auth, or a misconfigured npm Trusted Publisher).
 2. If the cause was in the repository, fix it on `main` and bump the patch version. The tag already points at the broken commit.
