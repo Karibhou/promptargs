@@ -1,0 +1,1 @@
+Hyphenated blank names (`{{file-name}}`) are now recognized as ordinary blanks, dotted names (`{{repo.owner}}`) are rejected with an error instead of silently rendering empty, and a default on any occurrence of a repeated blank is honored (the first default wins). (#253, #254)
