@@ -4,7 +4,7 @@ import { parseVars, VAR_PATTERN } from './parser.js';
 import { findTemplate, loadTemplates } from './loader.js';
 import { autodetect, AUTODETECT_VARS } from './autodetect.js';
 import { sanitizeForTerminal } from './sanitize.js';
-import { UsageError } from './flags.js';
+import { UsageError, assertNoReservedVars } from './flags.js';
 const EXAMPLE_REVIEW = `Review {{file}} for {{focus=correctness}} issues.
 Be {{tone=concise}} in your feedback.
 Focus on real bugs, not style nitpicks.
@@ -50,7 +50,9 @@ export function doList() {
             continue;
         }
         try {
-            const varNames = parseVars(t.content).map(v => {
+            const tplVars = parseVars(t.content);
+            assertNoReservedVars(tplVars);
+            const varNames = tplVars.map(v => {
                 if (v.defaultValue !== undefined)
                     return `${v.name}=${v.defaultValue}`;
                 return v.name;
@@ -79,7 +81,9 @@ export function doShow(templateName) {
     // Defaults are merged across repeated blanks, so {{name}} … {{name=dflt}}
     // must colour every occurrence as "has default", not just the one that
     // carries it.
-    const hasDefault = new Set(parseVars(tpl.content)
+    const tplVars = parseVars(tpl.content);
+    assertNoReservedVars(tplVars);
+    const hasDefault = new Set(tplVars
         .filter((v) => v.defaultValue !== undefined)
         .map((v) => v.name));
     // Sanitize first: templates are repo-controlled and must not be able to
