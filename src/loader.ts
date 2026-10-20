@@ -2,7 +2,7 @@
  * Find and load prompt templates from .prompts/ directories.
  */
 
-import { readFileSync, readdirSync, existsSync, statSync, realpathSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync, lstatSync, realpathSync } from 'node:fs';
 import { join, basename, extname, sep } from 'node:path';
 import { homedir } from 'node:os';
 import { UsageError } from './flags.js';
@@ -22,6 +22,25 @@ export interface PromptTemplate {
 }
 
 function loadFromDir(dir: string, source: 'project' | 'user'): PromptTemplate[] {
+  // The per-file escape check below trusts the resolved directory as its root,
+  // so a checked-out repo must not be able to replace the project .prompts
+  // entry itself with a link to somewhere else on the machine. ~/.prompts is
+  // the user's own and may be a link. lstat runs before existsSync (which
+  // follows links) so a dangling project link is explained rather than skipped.
+  if (source === 'project') {
+    try {
+      if (lstatSync(dir).isSymbolicLink()) {
+        diag('loader_dir_symlink', { status: 'refused' }, sanitizeForTerminal(`promptargs: ${dir} is a symlink; the project .prompts directory must be a real directory`));
+        return [];
+      }
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      const msg = err instanceof Error ? err.message : String(err);
+      diag('loader_dir_unreadable', { error_class: classifyError(err) }, sanitizeForTerminal(`promptargs: cannot stat ${dir}: ${msg}`));
+      return [];
+    }
+  }
+
   if (!existsSync(dir)) return [];
 
   let entries;
