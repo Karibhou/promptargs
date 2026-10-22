@@ -226,7 +226,7 @@ test('show rejects a template variable named like a CLI switch', () => {
 test('run rejects inline {{status}} and {{json}} blanks but still fills ordinary names', () => {
     const { cwd, home } = makeDirs();
     for (const name of ['status', 'json']) {
-        const res = runCli([`Emit {{${name}}}`, `--${name}=x`], cwd, home);
+        const res = runCli([`Emit {{${name}}}`, `--${name}`], cwd, home);
         assert.strictEqual(res.status, 1);
         assert.match(res.stderr, new RegExp(`Unsupported variable name "${name}": it is reserved for the --${name} switch`));
     }
@@ -609,6 +609,35 @@ test('every SUBCOMMANDS name is dispatched before template lookup', () => {
         const res = runCli([name, '--x=yes', '--no-interactive'], cwd, home);
         assert.doesNotMatch(res.stdout + res.stderr, /EXPANDED-yes-SENTINEL/, `${name} ran as a template`);
     }
+    rmSync(dirname(cwd), { recursive: true, force: true });
+});
+test('a switch given a value errors instead of enabling the switch', () => {
+    const { cwd, home } = makeDirs();
+    const res = runCli(['Hi {{name}}', '--name=x', '--json=false'], cwd, home);
+    assert.strictEqual(res.status, 1);
+    assert.match(res.stderr, /Invalid --json: --json takes no value/);
+    assert.strictEqual(res.stdout, '');
+    rmSync(dirname(cwd), { recursive: true, force: true });
+});
+test('a flag that names no blank errors instead of being dropped', () => {
+    const { cwd, home } = makeDirs();
+    const res = runCli(['Review {{file}}', '--file=main.go', '--fiel=x', '--no-interactive'], cwd, home);
+    assert.strictEqual(res.status, 1);
+    assert.match(res.stderr, /Unknown flag --fiel: template "inline" has no \{\{fiel\}\} blank\./);
+    assert.doesNotMatch(res.stderr, /promptargs show/);
+    assert.strictEqual(res.stdout, '');
+    mkdirSync(join(cwd, '.prompts'));
+    writeFileSync(join(cwd, '.prompts', 'plain.md'), 'plain text\n');
+    const plain = runCli(['plain', '--foo=1'], cwd, home);
+    assert.strictEqual(plain.status, 1);
+    assert.match(plain.stderr, /Unknown flag --foo: template "plain" has no \{\{foo\}\} blank\. Run "promptargs show plain"/);
+    rmSync(dirname(cwd), { recursive: true, force: true });
+});
+test('a declared flag together with a switch still works', () => {
+    const { cwd, home } = makeDirs();
+    const res = runCli(['Hi {{name}}', '--name=x', '--json'], cwd, home);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stdout.trim(), '"Hi x"');
     rmSync(dirname(cwd), { recursive: true, force: true });
 });
 //# sourceMappingURL=cli.test.js.map
