@@ -689,10 +689,13 @@ test('every SUBCOMMANDS name is dispatched before template lookup', () => {
 
 test('a switch given a value errors instead of enabling the switch', () => {
   const { cwd, home } = makeDirs();
-  const res = runCli(['Hi {{name}}', '--name=x', '--json=false'], cwd, home);
-  assert.strictEqual(res.status, 1);
-  assert.match(res.stderr, /Invalid --json: --json takes no value/);
-  assert.strictEqual(res.stdout, '');
+  for (const flag of ['--json=false', '--json=', '--cross=0']) {
+    const name = flag.split('=')[0];
+    const res = runCli(['Hi {{name}}', '--name=x', flag], cwd, home);
+    assert.strictEqual(res.status, 1, flag);
+    assert.match(res.stderr, new RegExp(`Invalid ${name}: ${name} takes no value`));
+    assert.strictEqual(res.stdout, '', flag);
+  }
   rmSync(dirname(cwd), { recursive: true, force: true });
 });
 
@@ -703,11 +706,27 @@ test('a flag that names no blank errors instead of being dropped', () => {
   assert.match(res.stderr, /Unknown flag --fiel: template "inline" has no \{\{fiel\}\} blank\./);
   assert.doesNotMatch(res.stderr, /promptargs show/);
   assert.strictEqual(res.stdout, '');
+  // Space-separated form and a comment-only inline template are rejected the same way.
+  const spaced = runCli(['Review {{file}}', '--fiel', 'main.go', '--no-interactive'], cwd, home);
+  assert.strictEqual(spaced.status, 1);
+  assert.match(spaced.stderr, /Unknown flag --fiel: template "inline" has no \{\{fiel\}\} blank\./);
+  assert.strictEqual(spaced.stdout, '');
+  const comment = runCli(['{{! comment}}', '--branch=main', '--no-interactive'], cwd, home);
+  assert.strictEqual(comment.status, 1);
+  assert.match(comment.stderr, /Unknown flag --branch: template "inline" has no \{\{branch\}\} blank\./);
+  assert.strictEqual(comment.stdout, '');
   mkdirSync(join(cwd, '.prompts'));
   writeFileSync(join(cwd, '.prompts', 'plain.md'), 'plain text\n');
   const plain = runCli(['plain', '--foo=1'], cwd, home);
   assert.strictEqual(plain.status, 1);
   assert.match(plain.stderr, /Unknown flag --foo: template "plain" has no \{\{foo\}\} blank\. Run "promptargs show plain"/);
+  // --port is reserved only for `ui`; on template runs it is an ordinary variable.
+  const portUnknown = runCli(['plain', '--port=3700', '--no-interactive'], cwd, home);
+  assert.strictEqual(portUnknown.status, 1);
+  assert.match(portUnknown.stderr, /Unknown flag --port: template "plain" has no \{\{port\}\} blank\./);
+  const portBlank = runCli(['Port {{port=80}}', '--port=3700', '--no-interactive'], cwd, home);
+  assert.strictEqual(portBlank.status, 0);
+  assert.strictEqual(portBlank.stdout.trim(), 'Port 3700');
   rmSync(dirname(cwd), { recursive: true, force: true });
 });
 

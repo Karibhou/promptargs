@@ -16,13 +16,25 @@ describe('parseFlags', () => {
             'no-interactive': 'true',
         });
     });
-    it('rejects a switch given a value', () => {
+    it('rejects a switch given a value, including an empty one', () => {
         for (const name of ['no-interactive', 'cross', 'json', 'status']) {
-            assert.throws(() => parseFlags([`--${name}=false`]), (err) => err instanceof UsageError && err.message === `Invalid --${name}: --${name} takes no value`);
+            for (const value of ['false', '', '0', 'no', 'true']) {
+                assert.throws(() => parseFlags([`--${name}=${value}`]), (err) => err instanceof UsageError && err.message === `Invalid --${name}: --${name} takes no value`);
+            }
         }
     });
     it('does not consume the next arg after a switch', () => {
         assert.deepStrictEqual(parseFlags(['--json', '--file=a']), { json: 'true', file: 'a' });
+    });
+    it('rejects any equals value on switches, including an empty value', () => {
+        for (const name of ['json', 'cross', 'status', 'no-interactive']) {
+            for (const value of ['', 'false', '0', 'no', 'true']) {
+                assert.throws(() => parseFlags([`--${name}=${value}`]), {
+                    name: 'UsageError',
+                    message: `Invalid --${name}: --${name} takes no value`,
+                });
+            }
+        }
     });
     it('keeps an empty --key= value', () => {
         assert.deepStrictEqual(parseFlags(['--file=']), { file: '' });
