@@ -1,0 +1,1 @@
+- Builder UI: the preview now fills a blank named `{{__proto__}}` the same way the CLI does instead of showing it as unfilled while the generated command passes it. (#327)

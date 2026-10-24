@@ -277,6 +277,16 @@ test('update ignores rows without a name', () => {
   assert.equal(h.cli(), 'promptargs "Hello {{name}}" --name=World');
 });
 
+test('update fills a variable named __proto__ in the preview like the CLI does', () => {
+  const h = makeHarness();
+  h.tmpl.value = 'Hello {{__proto__}}';
+  h.rows.push({ name: '__proto__', values: 'world' });
+  h.update();
+  assert.deepEqual(expandedTexts(h), ['Hello world']);
+  assert.ok(!h.previewBody.innerHTML.includes('class="unfilled"'), '__proto__ should not be unfilled');
+  assert.equal(h.cli(), 'promptargs "Hello {{__proto__}}" --__proto__=world');
+});
+
 // --- PRESETS -----------------------------------------------------------------
 
 interface Preset {
