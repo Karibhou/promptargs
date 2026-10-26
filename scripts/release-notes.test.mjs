@@ -18,6 +18,16 @@ test('groups fragments by category and normalises bullets', () => {
   );
 });
 
+test('renders stricter fragments under a Stricter parsing heading', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'notes-'));
+  writeFileSync(join(dir, 'stricter-s.md'), 'Old: ignored. New: rejected. (#5)\n');
+  writeFileSync(join(dir, 'fixed-b.md'), 'Fixed b (#2)\n');
+  assert.equal(
+    renderReleaseNotes(dir),
+    '### Stricter parsing\n\n- Old: ignored. New: rejected. (#5)\n\n### Fixed\n\n- Fixed b (#2)\n',
+  );
+});
+
 test('returns an empty string when there are no fragments', () => {
   assert.equal(renderReleaseNotes(mkdtempSync(join(tmpdir(), 'notes-'))), '');
 });
@@ -61,7 +71,7 @@ test('every committed changelog.d fragment is rendered', () => {
   assert.ok(names.length > 0, 'expected at least one fragment');
   const rendered = renderReleaseNotes(dir);
   for (const name of names) {
-    assert.match(name, /^(added|changed|fixed)-[a-z0-9][a-z0-9-]*\.md$/, name);
+    assert.match(name, /^(added|changed|stricter|fixed)-[a-z0-9][a-z0-9-]*\.md$/, name);
     const lines = readFileSync(join(dir, name), 'utf8').trim().split('\n');
     assert.equal(lines.length, 1, `${name} must hold a single line`);
     const text = lines[0].replace(/^[-*]\s+/, '');
