@@ -817,21 +817,29 @@ import { cartesian as sharedCartesian, zip as sharedZip } from './iterate.js';
     if (source === 'file') return [raw];
     // Mirrors splitUnescaped in resolver.ts: `\,` is a literal comma, `\\,` a
     // literal backslash followed by a separator.
+    // Single pass (a /(\\*),/g regex backtracks quadratically on long runs).
     const pieces = [];
     let piece = '';
-    let last = 0;
-    for (const m of raw.matchAll(/(\\*),/g)) {
-      const bs = m[1].length;
-      piece += raw.slice(last, m.index) + '\\'.repeat(bs >> 1);
-      last = m.index + m[0].length;
-      if (bs % 2 === 1) {
-        piece += ',';
-      } else {
-        pieces.push(piece);
-        piece = '';
+    let bs = 0;
+    for (const ch of raw) {
+      if (ch === '\\') {
+        bs++;
+        continue;
       }
+      if (ch === ',') {
+        piece += '\\'.repeat(bs >> 1);
+        if (bs % 2 === 1) {
+          piece += ',';
+        } else {
+          pieces.push(piece);
+          piece = '';
+        }
+      } else {
+        piece += '\\'.repeat(bs) + ch;
+      }
+      bs = 0;
     }
-    pieces.push(piece + raw.slice(last));
+    pieces.push(piece + '\\'.repeat(bs));
     return pieces.map(s => s.trim()).filter(Boolean);
   }
 

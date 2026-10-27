@@ -33,30 +33,45 @@ function expandPiece(piece: string): string[] {
 // literal backslash, and an odd one left over makes the comma literal. So
 // `a\,b` is one value `a,b`, while `a\\,b` is `a\` then `b`. Backslashes
 // elsewhere are kept as-is.
-const BACKSLASHES_BEFORE_COMMA = /(\\*),/g;
+//
+// Single pass: count a backslash run and decide at the next character whether
+// it sat before a comma (read in pairs) or elsewhere (kept verbatim). A regex
+// like /(\\*),/g backtracks quadratically on long runs with no comma.
+// With split=false nothing is split, trimmed or dropped: the result is the
+// whole input, unescaped, as a single piece.
+function scanCommas(raw: string, split: boolean): string[] {
+  const pieces: string[] = [];
+  let piece = '';
+  let bs = 0;
+  for (const ch of raw) {
+    if (ch === '\\') {
+      bs++;
+      continue;
+    }
+    if (ch === ',') {
+      piece += '\\'.repeat(bs >> 1);
+      if (bs % 2 === 1 || !split) {
+        piece += ',';
+      } else {
+        pieces.push(piece);
+        piece = '';
+      }
+    } else {
+      piece += '\\'.repeat(bs) + ch;
+    }
+    bs = 0;
+  }
+  pieces.push(piece + '\\'.repeat(bs));
+  return pieces;
+}
 
 function unescapeCommas(raw: string): string {
-  return raw.replace(BACKSLASHES_BEFORE_COMMA, (_, bs: string) => '\\'.repeat(bs.length >> 1) + ',');
+  return scanCommas(raw, false)[0];
 }
 
 // Split on unescaped commas, then unescape what is left (see above).
 function splitUnescaped(raw: string): string[] {
-  const pieces: string[] = [];
-  let piece = '';
-  let last = 0;
-  for (const m of raw.matchAll(BACKSLASHES_BEFORE_COMMA)) {
-    const bs = m[1].length;
-    piece += raw.slice(last, m.index) + '\\'.repeat(bs >> 1);
-    last = m.index + m[0].length;
-    if (bs % 2 === 1) {
-      piece += ',';
-    } else {
-      pieces.push(piece);
-      piece = '';
-    }
-  }
-  pieces.push(piece + raw.slice(last));
-  return pieces.map(s => s.trim()).filter(Boolean);
+  return scanCommas(raw, true).map(s => s.trim()).filter(Boolean);
 }
 
 function expandArrayValue(raw: string, varName?: string): string[] {

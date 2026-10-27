@@ -86,6 +86,14 @@ describe('resolve array expansion', () => {
         const r = await resolve([v('pa_f')], { pa_f: 'C:\\a\\\\b,x\\' }, false);
         assert.deepStrictEqual(r.iterations.map(i => i.pa_f), ['C:\\a\\\\b', 'x\\']);
     });
+    it('scans a long backslash run in linear time', async () => {
+        // A /(\\*),/g scan backtracked quadratically here (128K took >30 s).
+        const run = '\\'.repeat(128 * 1024);
+        const start = Date.now();
+        const r = await resolve([v('pa_f')], { pa_f: `a${run}b,${run},c` }, false);
+        assert.ok(Date.now() - start < 2000, 'scan took too long');
+        assert.deepStrictEqual(r.iterations.map(i => i.pa_f), [`a${run}b`, run.slice(run.length / 2), 'c']);
+    });
     it('unescapes \\\\, in @file lines to a backslash and comma', async () => {
         const listFile = join(tmp, 'escaped-backslash.txt');
         writeFileSync(listFile, 'x\\\\,y\nz\n');
