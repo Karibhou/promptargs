@@ -1,1 +1,1 @@
-Mutation testing no longer requires POSIX `chmod` or `cp` commands to build and prepare the CLI. (#434)
+Mutation testing no longer requires POSIX `chmod` or `cp` commands to build and prepare all package bin targets. (#434)
